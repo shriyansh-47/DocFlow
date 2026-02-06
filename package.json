@@ -1,0 +1,20 @@
+{
+  "name": "docflow",
+  "version": "1.0.0",
+  "description": "Smart Document Approval & Tracking System",
+  "private": true,
+  "scripts": {
+    "server": "node server/index.js",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "tesseract.js": "^5.0.4",
+    "uuid": "^9.0.0",
+    "pdf-parse": "^1.1.1",
+    "concurrently": "^8.2.2"
+  }
+}

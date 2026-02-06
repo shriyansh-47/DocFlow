@@ -1,0 +1,10 @@
+Name: John Doe
+Address: 123 College Road, Mumbai, Maharashtra
+DOB: 15-03-2000
+Phone: 9876543210
+Field: Admissions
+
+Qualification: Bachelor of Science
+Grade: A
+Percentage: 85%
+Marks: 510/600

@@ -1,0 +1,9 @@
+Name: Jane Smith
+Address: 456 University Ave, Delhi
+DOB: 22-07-2001
+Phone: 8765432109
+Field: Scholarship
+
+Family Income: 250000 per annum
+Financial need: Yes
+Scholarship type: Merit-cum-means
