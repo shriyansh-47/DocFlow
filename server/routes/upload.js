@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const { MAX_FILE_SIZE, ALLOWED_EXTENSIONS } = require("../config");
 const { extractText } = require("../utils/extractText");
+const { detectDepartment } = require("../validators/departmentValidator");
 const store = require("../store");
 
 const router = express.Router();
@@ -39,8 +40,8 @@ const upload = multer({
 });
 
 // ── POST /api/upload ────────────────────────────────────────────────────────
-// Student uploads a file → saved with status "pending_admin"
-// NO automatic validation — admin will review manually.
+// Student uploads → text extracted → auto-routed to department by keywords.
+// Flow: Student → Department → Admin (final).
 router.post("/", (req, res) => {
   upload.single("document")(req, res, async (err) => {
     if (err) {
@@ -63,8 +64,47 @@ router.post("/", (req, res) => {
     const docId = uuidv4();
 
     try {
-      // Extract text so admin can view the content
       const textContent = await extractText(filePath);
+
+      // Auto-detect department from document keywords
+      const department = detectDepartment(textContent);
+
+      if (!department) {
+        // Could not determine department — reject with guidance
+        const doc = store.addDocument({
+          id: docId,
+          originalName: req.file.originalname,
+          filePath,
+          uploadedAt: new Date().toISOString(),
+          textContent,
+          currentStatus: "rejected",
+          department: null,
+          stages: [
+            {
+              stage: "upload",
+              status: "rejected",
+              timestamp: new Date().toISOString(),
+              remarks:
+                "Could not determine department. Document must contain keywords related to admissions, scholarship, or internship.",
+            },
+          ],
+          finalStatus: "rejected",
+          finalMessage:
+            "Auto-routing failed: no department keywords found. Please include relevant details (e.g. qualification/marks for admissions, income/financial for scholarship, skills/experience for internship).",
+          extracted: null,
+          adminRemarks: null,
+          departmentRemarks: null,
+        });
+
+        return res.status(422).json({
+          id: docId,
+          status: "rejected",
+          message: doc.finalMessage,
+          stages: doc.stages,
+        });
+      }
+
+      const deptLabel = department.charAt(0).toUpperCase() + department.slice(1);
 
       const doc = store.addDocument({
         id: docId,
@@ -72,14 +112,14 @@ router.post("/", (req, res) => {
         filePath,
         uploadedAt: new Date().toISOString(),
         textContent,
-        currentStatus: "pending_admin",
-        department: null,
+        currentStatus: "pending_department",
+        department,
         stages: [
           {
             stage: "upload",
             status: "submitted",
             timestamp: new Date().toISOString(),
-            remarks: "File uploaded successfully. Awaiting admin review.",
+            remarks: `File uploaded. Auto-routed to ${deptLabel} Department for review.`,
           },
         ],
         finalStatus: null,
@@ -91,9 +131,9 @@ router.post("/", (req, res) => {
 
       return res.status(200).json({
         id: docId,
-        status: "pending_admin",
-        message:
-          "Document uploaded successfully! It is now pending admin review.",
+        status: "pending_department",
+        message: `Document uploaded and auto-routed to ${deptLabel} Department for review.`,
+        department,
         stages: doc.stages,
       });
     } catch (error) {

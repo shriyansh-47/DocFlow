@@ -4,7 +4,7 @@ const store = require("../store");
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/pending — documents awaiting admin review
+// GET /api/admin/pending — documents approved by department, awaiting admin
 // ─────────────────────────────────────────────────────────────────────────────
 router.get("/pending", (req, res) => {
   const docs = store
@@ -16,6 +16,8 @@ router.get("/pending", (req, res) => {
       uploadedAt: d.uploadedAt,
       textContent: d.textContent,
       currentStatus: d.currentStatus,
+      department: d.department,
+      departmentRemarks: d.departmentRemarks,
       stages: d.stages,
     }));
   res.json(docs);
@@ -39,11 +41,10 @@ router.get("/all", (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/admin/review/:id — admin approves or rejects a document
-// Body: { action: "approve" | "reject", remarks: "...", extracted: {...}, department: "..." }
+// POST /api/admin/review/:id — admin gives FINAL approval or rejection
+// Body: { action: "approve" | "reject", remarks: "..." }
 //
-// On approve:  admin must provide extracted info + department to forward to.
-// On reject:   admin provides remarks explaining why.
+// Documents arrive here AFTER department has approved them.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/review/:id", (req, res) => {
   const doc = store.getById(req.params.id);
@@ -55,7 +56,7 @@ router.post("/review/:id", (req, res) => {
       .json({ message: `Document is not pending admin review. Current status: ${doc.currentStatus}` });
   }
 
-  const { action, remarks, extracted, department } = req.body;
+  const { action, remarks } = req.body;
 
   if (!action || !["approve", "reject"].includes(action)) {
     return res
@@ -63,19 +64,23 @@ router.post("/review/:id", (req, res) => {
       .json({ message: 'action must be "approve" or "reject"' });
   }
 
+  const deptLabel = doc.department
+    ? doc.department.charAt(0).toUpperCase() + doc.department.slice(1)
+    : "Unknown";
+
   // ── REJECT ──
   if (action === "reject") {
     const stageEntry = {
-      stage: "admin",
+      stage: "admin-final",
       status: "rejected",
-      remarks: remarks || "Rejected by admin.",
+      remarks: remarks || "Rejected by admin (final review).",
       timestamp: new Date().toISOString(),
     };
 
     store.updateDocument(doc.id, {
       currentStatus: "rejected",
       finalStatus: "rejected",
-      finalMessage: `Admin rejected: ${remarks || "No remarks provided."}`,
+      finalMessage: `Admin (final review) rejected: ${remarks || "No remarks provided."}`,
       adminRemarks: remarks || "Rejected by admin.",
       stages: [...doc.stages, stageEntry],
     });
@@ -83,31 +88,24 @@ router.post("/review/:id", (req, res) => {
     return res.json({ message: "Document rejected by admin.", id: doc.id });
   }
 
-  // ── APPROVE ──
-  if (!department) {
-    return res
-      .status(400)
-      .json({ message: "department is required when approving." });
-  }
-
+  // ── APPROVE (FINAL) ──
   const stageEntry = {
-    stage: "admin",
+    stage: "admin-final",
     status: "approved",
-    remarks: remarks || "Approved by admin. Forwarding to department.",
-    extracted: extracted || null,
+    remarks: remarks || "Final approval granted by admin.",
     timestamp: new Date().toISOString(),
   };
 
   store.updateDocument(doc.id, {
-    currentStatus: "pending_department",
-    department: department.toLowerCase().trim(),
-    extracted: extracted || null,
+    currentStatus: "approved",
+    finalStatus: "approved",
+    finalMessage: `Document fully approved! (${deptLabel} Dept + Admin)`,
     adminRemarks: remarks || "Approved.",
     stages: [...doc.stages, stageEntry],
   });
 
   return res.json({
-    message: `Document approved by admin. Forwarded to ${department} department.`,
+    message: `Document fully approved (final).`,
     id: doc.id,
   });
 });

@@ -48,10 +48,11 @@ function StudentPortal() {
   };
 
   const statusLabel = (doc) => {
-    if (doc.currentStatus === "pending_admin") return "Pending Admin Review";
     if (doc.currentStatus === "pending_department")
       return `Pending ${capitalize(doc.department)} Dept. Review`;
-    if (doc.finalStatus === "approved") return "Approved";
+    if (doc.currentStatus === "pending_admin")
+      return "Dept. Approved — Pending Admin Final Review";
+    if (doc.finalStatus === "approved") return "Fully Approved";
     if (doc.finalStatus === "rejected") return "Rejected";
     return doc.currentStatus;
   };

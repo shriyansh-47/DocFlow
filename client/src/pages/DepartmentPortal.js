@@ -73,8 +73,8 @@ function DepartmentPortal() {
       <div className="portal-header department">
         <h2>Department Portal</h2>
         <p>
-          Review documents forwarded by the admin. Approve or reject based on
-          department-specific criteria.
+          Review documents auto-routed from students. Approve to forward to admin
+          for final approval, or reject.
         </p>
       </div>
 

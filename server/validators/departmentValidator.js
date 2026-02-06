@@ -67,4 +67,24 @@ function getSupportedDepartments() {
   }));
 }
 
-module.exports = { departmentValidate, getSupportedDepartments };
+module.exports = { departmentValidate, getSupportedDepartments, detectDepartment };
+
+/**
+ * Auto-detect which department a document belongs to based on keyword matches.
+ * Returns the department key with the most keyword hits, or null if none match.
+ */
+function detectDepartment(textContent) {
+  const lower = textContent.toLowerCase();
+  let bestDept = null;
+  let bestScore = 0;
+
+  for (const [dept, rules] of Object.entries(departmentRules)) {
+    const score = rules.requiredKeywords.filter((kw) => lower.includes(kw)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestDept = dept;
+    }
+  }
+
+  return bestDept;
+}

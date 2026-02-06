@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
 const API = "http://localhost:5000/api";
-const DEPARTMENTS = ["admissions", "scholarship", "internship"];
 
 function AdminPortal() {
   const [pending, setPending] = useState([]);
   const [allDocs, setAllDocs] = useState([]);
-  const [reviewData, setReviewData] = useState({}); // { [docId]: { action, remarks, department } }
+  const [reviewData, setReviewData] = useState({});
   const [actionMsg, setActionMsg] = useState(null);
 
   const fetchPending = useCallback(async () => {
@@ -52,8 +51,6 @@ function AdminPortal() {
       const res = await axios.post(`${API}/admin/review/${docId}`, {
         action,
         remarks: data.remarks || "",
-        department: data.department || "",
-        extracted: null, // admin can add later
       });
       setActionMsg({ type: "success", text: res.data.message });
       fetchPending();
@@ -69,8 +66,8 @@ function AdminPortal() {
   return (
     <div>
       <div className="portal-header admin">
-        <h2>Admin Portal</h2>
-        <p>Review uploaded documents, then approve &amp; forward to a department or reject.</p>
+        <h2>Admin Portal — Final Approval</h2>
+        <p>Documents that passed department review arrive here for final approval or rejection.</p>
       </div>
 
       {actionMsg && (
@@ -79,11 +76,11 @@ function AdminPortal() {
         </div>
       )}
 
-      {/* ── Pending Documents ── */}
+      {/* ── Pending Documents (dept-approved, awaiting admin final) ── */}
       <div className="section-card">
-        <h3>Pending Documents ({pending.length})</h3>
+        <h3>Pending Final Approval ({pending.length})</h3>
         {pending.length === 0 && (
-          <p className="empty-text">No documents pending review.</p>
+          <p className="empty-text">No documents pending final approval.</p>
         )}
 
         {pending.map((doc) => (
@@ -95,35 +92,48 @@ function AdminPortal() {
               </span>
             </div>
 
+            <p className="admin-note">
+              <strong>Department:</strong>{" "}
+              <span style={{ textTransform: "capitalize" }}>{doc.department}</span>
+              {doc.departmentRemarks && (
+                <> — <strong>Dept. Remarks:</strong> {doc.departmentRemarks}</>
+              )}
+            </p>
+
             {/* Show file content */}
             <div className="file-content-box">
               <strong>Document Content:</strong>
               <pre>{doc.textContent}</pre>
             </div>
 
+            {/* Prior stages */}
+            {doc.stages && doc.stages.length > 0 && (
+              <div className="stages-timeline compact">
+                <strong>Prior Stages:</strong>
+                {doc.stages.map((s, i) => (
+                  <div className="stage-item" key={i}>
+                    <div className={`stage-dot ${s.status}`} />
+                    <div className="stage-info">
+                      <span className="stage-name">{s.stage}</span>
+                      <span className="stage-time">
+                        {" — "}
+                        {new Date(s.timestamp).toLocaleString()}
+                      </span>
+                      {s.remarks && (
+                        <div className="stage-remarks">{s.remarks}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Review controls */}
             <div className="review-controls">
               <div className="control-row">
-                <label>Forward to Department:</label>
-                <select
-                  value={reviewData[doc.id]?.department || ""}
-                  onChange={(e) =>
-                    handleFieldChange(doc.id, "department", e.target.value)
-                  }
-                >
-                  <option value="">-- Select Department --</option>
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d.charAt(0).toUpperCase() + d.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="control-row">
                 <label>Remarks:</label>
                 <textarea
-                  placeholder="Add remarks (optional)..."
+                  placeholder="Add final review remarks (optional)..."
                   value={reviewData[doc.id]?.remarks || ""}
                   onChange={(e) =>
                     handleFieldChange(doc.id, "remarks", e.target.value)
@@ -137,7 +147,7 @@ function AdminPortal() {
                   className="btn btn-approve"
                   onClick={() => handleReview(doc.id, "approve")}
                 >
-                  Approve &amp; Forward
+                  Final Approve
                 </button>
                 <button
                   className="btn btn-reject"

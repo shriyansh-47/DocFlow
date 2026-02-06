@@ -103,24 +103,22 @@ router.post("/review/:id", (req, res) => {
     });
   }
 
-  // APPROVE
+  // APPROVE → forward to admin for final approval
   const stageEntry = {
     stage: `department-${doc.department}`,
     status: "approved",
-    remarks: remarks || `Approved by ${deptLabel} department.`,
+    remarks: remarks || `Approved by ${deptLabel} department. Forwarding to admin for final approval.`,
     timestamp: new Date().toISOString(),
   };
 
   store.updateDocument(doc.id, {
-    currentStatus: "approved",
-    finalStatus: "approved",
-    finalMessage: `Document fully approved by ${deptLabel} Department!`,
+    currentStatus: "pending_admin",
     departmentRemarks: remarks || `Approved by ${deptLabel} department.`,
     stages: [...doc.stages, stageEntry],
   });
 
   return res.json({
-    message: `Document approved by ${deptLabel} department.`,
+    message: `Document approved by ${deptLabel} department. Forwarded to admin for final approval.`,
     id: doc.id,
   });
 });
