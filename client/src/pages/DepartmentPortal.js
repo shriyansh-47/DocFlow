@@ -5,11 +5,38 @@ const API = "http://localhost:5000/api";
 const DEPARTMENTS = ["admissions", "scholarship", "internship"];
 
 function DepartmentPortal() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passkey, setPasskey] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const [selectedDept, setSelectedDept] = useState("admissions");
   const [pending, setPending] = useState([]);
   const [allDocs, setAllDocs] = useState([]);
   const [reviewData, setReviewData] = useState({});
   const [actionMsg, setActionMsg] = useState(null);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      const res = await axios.post(`${API}/auth/verify`, {
+        role: "department",
+        passkey,
+        department: selectedDept,
+      });
+      if (res.data.success) {
+        setAuthenticated(true);
+      }
+    } catch (err) {
+      setAuthError(err.response?.data?.message || "Authentication failed.");
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setPasskey("");
+    setAuthError("");
+  };
 
   const fetchPending = useCallback(async () => {
     try {
@@ -78,21 +105,52 @@ function DepartmentPortal() {
         </p>
       </div>
 
-      {/* Department selector */}
+      {!authenticated ? (
+        <div className="section-card" style={{ maxWidth: 400, margin: "2rem auto" }}>
+          <h3>🔒 Department Login</h3>
+          <form onSubmit={handleLogin}>
+            <label><strong>Select Department:</strong></label>
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              className="dept-select"
+              style={{ width: "100%", marginBottom: 12, padding: 8 }}
+            >
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d.charAt(0).toUpperCase() + d.slice(1)}
+                </option>
+              ))}
+            </select>
+            <label><strong>Passkey:</strong></label>
+            <input
+              type="password"
+              value={passkey}
+              onChange={(e) => setPasskey(e.target.value)}
+              placeholder="Enter department passkey"
+              required
+              style={{ width: "100%", marginBottom: 12, padding: 8 }}
+            />
+            {authError && (
+              <div style={{ color: "#c0392b", background: "#fdeaea", padding: "8px 12px", borderRadius: 6, marginBottom: 12 }}>
+                {authError}
+              </div>
+            )}
+            <button type="submit" className="btn approve" style={{ width: "100%" }}>
+              Unlock Portal
+            </button>
+          </form>
+        </div>
+      ) : (
+      <>
+
+      {/* Department selector (locked to authenticated dept) */}
       <div className="section-card">
         <div className="control-row">
-          <label><strong>Select Department:</strong></label>
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="dept-select"
-          >
-            {DEPARTMENTS.map((d) => (
-              <option key={d} value={d}>
-                {d.charAt(0).toUpperCase() + d.slice(1)}
-              </option>
-            ))}
-          </select>
+          <label><strong>Department:</strong> {deptLabel}</label>
+          <button onClick={handleLogout} className="btn reject" style={{ marginLeft: "auto" }}>
+            🔒 Logout
+          </button>
         </div>
       </div>
 
@@ -234,6 +292,8 @@ function DepartmentPortal() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }

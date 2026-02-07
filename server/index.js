@@ -7,6 +7,7 @@ const uploadRoutes = require("./routes/upload");
 const documentRoutes = require("./routes/documents");
 const adminRoutes = require("./routes/admin");
 const departmentRoutes = require("./routes/department");
+const authRoutes = require("./routes/auth");
 
 const app = express();
 const PORT = 5000;
@@ -26,6 +27,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/department", departmentRoutes);
+app.use("/api/auth", authRoutes);
 
 app.listen(PORT, () => {
   console.log(`DocFlow server running on http://localhost:${PORT}`);

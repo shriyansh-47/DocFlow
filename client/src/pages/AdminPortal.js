@@ -4,10 +4,35 @@ import axios from "axios";
 const API = "http://localhost:5000/api";
 
 function AdminPortal() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passkey, setPasskey] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const [pending, setPending] = useState([]);
   const [allDocs, setAllDocs] = useState([]);
   const [reviewData, setReviewData] = useState({});
   const [actionMsg, setActionMsg] = useState(null);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      const res = await axios.post(`${API}/auth/verify`, {
+        role: "admin",
+        passkey,
+      });
+      if (res.data.success) {
+        setAuthenticated(true);
+      }
+    } catch (err) {
+      setAuthError(err.response?.data?.message || "Authentication failed.");
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setPasskey("");
+  };
 
   const fetchPending = useCallback(async () => {
     try {
@@ -69,6 +94,28 @@ function AdminPortal() {
         <h2>Admin Portal — Final Approval</h2>
         <p>Documents that passed department review arrive here for final approval or rejection.</p>
       </div>
+
+      {!authenticated ? (
+        <div className="section-card" style={{ maxWidth: 420, margin: "40px auto" }}>
+          <h3>Admin Login</h3>
+          <p style={{ marginBottom: 16, fontSize: "0.9rem" }}>Enter the admin passkey to access this portal.</p>
+          <form onSubmit={handleLogin}>
+            <input
+              type="password"
+              placeholder="Enter admin passkey"
+              value={passkey}
+              onChange={(e) => setPasskey(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #ccc", marginBottom: 12, fontSize: "0.92rem" }}
+            />
+            {authError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{authError}</div>}
+            <button className="btn btn-primary" type="submit" style={{ width: "100%" }}>Unlock Portal</button>
+          </form>
+        </div>
+      ) : (
+        <>
+          <div style={{ textAlign: "right", marginBottom: 12 }}>
+            <button className="btn btn-reject" onClick={handleLogout} style={{ padding: "6px 16px", fontSize: "0.82rem" }}>Logout</button>
+          </div>
 
       {actionMsg && (
         <div className={`alert ${actionMsg.type === "error" ? "alert-error" : "alert-success"}`}>
@@ -196,6 +243,8 @@ function AdminPortal() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }
