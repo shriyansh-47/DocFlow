@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "username": "student1",
+    "password": "$2b$10$QGn.Ti6e8HWc4Kh/7lUR5.A7VmQrK0MwmhnHy8o/VKxVmJSvlr/8y",
+    "role": "student",
+    "department": null
+  },
+  {
+    "id": 2,
+    "username": "admissions_head",
+    "password": "$2b$10$bM1IzVHsh6rtl71geeLCJ.Qz8cARk9kehmcY5jnCvsej3tWy.Hyuq",
+    "role": "department",
+    "department": "admissions"
+  },
+  {
+    "id": 3,
+    "username": "scholarship_head",
+    "password": "$2b$10$.luG60hjkh/N/15yfeCgAeEqy8pX/AkzImSHfcoejqMH3J49bnC1a",
+    "role": "department",
+    "department": "scholarship"
+  },
+  {
+    "id": 4,
+    "username": "internship_head",
+    "password": "$2b$10$ofbzHxofxi0jxk/lLt791.iGg9NjrRERZl9D57L0yNuTM6WzZ0pK6",
+    "role": "department",
+    "department": "internship"
+  },
+  {
+    "id": 5,
+    "username": "admin1",
+    "password": "$2b$10$BRMUIOujG155R1hNaSpBV.NnB76KtnHI3pALpoalsYQYSWYdi.z8K",
+    "role": "admin",
+    "department": null
+  }
+]

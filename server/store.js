@@ -24,4 +24,11 @@ module.exports = {
     documents[idx] = { ...documents[idx], ...updates };
     return documents[idx];
   },
+
+  deleteDocument(id) {
+    const idx = documents.findIndex((d) => d.id === id);
+    if (idx === -1) return false;
+    documents.splice(idx, 1);
+    return true;
+  },
 };

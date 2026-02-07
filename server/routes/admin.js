@@ -1,7 +1,11 @@
 const express = require("express");
 const store = require("../store");
+const { authMiddleware, requireRole } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+// All admin routes require authentication + admin role
+router.use(authMiddleware, requireRole("admin"));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/admin/pending — documents approved by department, awaiting admin

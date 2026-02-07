@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const { MAX_FILE_SIZE, ALLOWED_EXTENSIONS } = require("../config");
 const { extractText } = require("../utils/extractText");
 const { classifyDocument } = require("../validators/documentValidator");
+const { authMiddleware, requireRole } = require("../middleware/authMiddleware");
 const store = require("../store");
 
 const router = express.Router();
@@ -42,7 +43,7 @@ const upload = multer({
 // ── POST /api/upload ────────────────────────────────────────────────────────
 // Student uploads → text extracted → auto-routed to department by keywords.
 // Flow: Student → Department → Admin (final).
-router.post("/", (req, res) => {
+router.post("/", authMiddleware, requireRole("student"), (req, res) => {
   upload.single("document")(req, res, async (err) => {
     if (err) {
       return res.status(400).json({
@@ -66,13 +67,14 @@ router.post("/", (req, res) => {
     try {
       const textContent = await extractText(filePath);
 
-      // ── CLASSIFY the document into admissions / internship / scholarship / none ──
-      const classification = classifyDocument(textContent);
+      // ── CLASSIFY the document using NLP model ──
+      const classification = await classifyDocument(textContent);
 
       if (!classification.isValid || classification.category === "none") {
         // Classification failed — cannot determine document type
         const doc = store.addDocument({
           id: docId,
+          userId: req.user.id,
           originalName: req.file.originalname,
           filePath,
           uploadedAt: new Date().toISOString(),
@@ -116,6 +118,7 @@ router.post("/", (req, res) => {
 
       const doc = store.addDocument({
         id: docId,
+        userId: req.user.id,
         originalName: req.file.originalname,
         filePath,
         uploadedAt: new Date().toISOString(),

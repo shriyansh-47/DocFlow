@@ -1,45 +1,64 @@
 const express = require("express");
-const { PASSKEYS } = require("../config");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const path = require("path");
+const { JWT_SECRET } = require("../config");
 
 const router = express.Router();
 
+// Load users from JSON file
+function loadUsers() {
+  const filePath = path.join(__dirname, "..", "data", "users.json");
+  const raw = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(raw);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/auth/verify — Verify a passkey for admin or department access
-// Body: { role: "admin" | "department", passkey: "...", department?: "admissions" | ... }
+// POST /api/auth/login — authenticate user and return JWT
+// Body: { username, password }
 // ─────────────────────────────────────────────────────────────────────────────
-router.post("/verify", (req, res) => {
-  const { role, passkey, department } = req.body;
+router.post("/login", async (req, res) => {
+  const { username, password } = req.body;
 
-  if (!role || !passkey) {
-    return res.status(400).json({ success: false, message: "Role and passkey are required." });
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required." });
   }
 
-  if (role === "admin") {
-    if (passkey === PASSKEYS.admin) {
-      return res.json({ success: true, message: "Admin access granted." });
-    }
-    return res.status(401).json({ success: false, message: "Invalid admin passkey." });
+  const users = loadUsers();
+  const user = users.find(
+    (u) => u.username.toLowerCase() === username.toLowerCase().trim()
+  );
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid username or password." });
   }
 
-  if (role === "department") {
-    if (!department) {
-      return res.status(400).json({ success: false, message: "Department name is required." });
-    }
-
-    const deptKey = department.toLowerCase().trim();
-    const expectedPasskey = PASSKEYS.department[deptKey];
-
-    if (!expectedPasskey) {
-      return res.status(400).json({ success: false, message: `Unknown department: ${department}` });
-    }
-
-    if (passkey === expectedPasskey) {
-      return res.json({ success: true, message: `${department} department access granted.` });
-    }
-    return res.status(401).json({ success: false, message: "Invalid department passkey." });
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    return res.status(401).json({ message: "Invalid username or password." });
   }
 
-  return res.status(400).json({ success: false, message: `Unknown role: ${role}` });
+  // Create JWT token (expires in 8 hours)
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    department: user.department,
+  };
+
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+
+  return res.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      department: user.department,
+    },
+  });
 });
 
 module.exports = router;

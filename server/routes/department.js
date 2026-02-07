@@ -1,10 +1,14 @@
 const express = require("express");
 const store = require("../store");
+const { authMiddleware, requireRole } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 // Supported departments
 const DEPARTMENTS = ["admissions", "scholarship", "internship"];
+
+// All department routes require authentication + department role
+router.use(authMiddleware, requireRole("department"));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/department/pending/:dept — documents awaiting this department

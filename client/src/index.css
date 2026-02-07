@@ -260,6 +260,37 @@ h1 {
   background: #c82333;
 }
 
+.btn-clear {
+  background: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-clear:hover {
+  background: #545b62;
+}
+
+.btn-clear-small {
+  background: transparent;
+  color: var(--text-muted, #888);
+  border: 1px solid var(--text-muted, #ccc);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.btn-clear-small:hover {
+  background: #dc3545;
+  color: #fff;
+  border-color: #dc3545;
+}
+
 .info-text {
   margin-top: 10px;
   font-size: 0.82rem;

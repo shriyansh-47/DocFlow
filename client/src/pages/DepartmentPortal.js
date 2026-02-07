@@ -2,59 +2,33 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
 const API = "http://localhost:5000/api";
-const DEPARTMENTS = ["admissions", "scholarship", "internship"];
 
-function DepartmentPortal() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [passkey, setPasskey] = useState("");
-  const [authError, setAuthError] = useState("");
-
-  const [selectedDept, setSelectedDept] = useState("admissions");
+function DepartmentPortal({ token, user }) {
+  const selectedDept = user.department; // locked to the user's department
   const [pending, setPending] = useState([]);
   const [allDocs, setAllDocs] = useState([]);
   const [reviewData, setReviewData] = useState({});
   const [actionMsg, setActionMsg] = useState(null);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setAuthError("");
-    try {
-      const res = await axios.post(`${API}/auth/verify`, {
-        role: "department",
-        passkey,
-        department: selectedDept,
-      });
-      if (res.data.success) {
-        setAuthenticated(true);
-      }
-    } catch (err) {
-      setAuthError(err.response?.data?.message || "Authentication failed.");
-    }
-  };
-
-  const handleLogout = () => {
-    setAuthenticated(false);
-    setPasskey("");
-    setAuthError("");
-  };
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
   const fetchPending = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/department/pending/${selectedDept}`);
+      const res = await axios.get(`${API}/department/pending/${selectedDept}`, authHeaders);
       setPending(res.data);
     } catch {
       /* ignore */
     }
-  }, [selectedDept]);
+  }, [selectedDept, token]);
 
   const fetchAll = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/department/all/${selectedDept}`);
+      const res = await axios.get(`${API}/department/all/${selectedDept}`, authHeaders);
       setAllDocs(res.data);
     } catch {
       /* ignore */
     }
-  }, [selectedDept]);
+  }, [selectedDept, token]);
 
   useEffect(() => {
     fetchPending();
@@ -80,7 +54,7 @@ function DepartmentPortal() {
       const res = await axios.post(`${API}/department/review/${docId}`, {
         action,
         remarks: data.remarks || "",
-      });
+      }, authHeaders);
       setActionMsg({ type: "success", text: res.data.message });
       fetchPending();
       fetchAll();
@@ -98,60 +72,11 @@ function DepartmentPortal() {
   return (
     <div>
       <div className="portal-header department">
-        <h2>Department Portal</h2>
+        <h2>{deptLabel} Department Portal</h2>
         <p>
           Review documents auto-routed from students. Approve to forward to admin
           for final approval, or reject.
         </p>
-      </div>
-
-      {!authenticated ? (
-        <div className="section-card" style={{ maxWidth: 400, margin: "2rem auto" }}>
-          <h3>🔒 Department Login</h3>
-          <form onSubmit={handleLogin}>
-            <label><strong>Select Department:</strong></label>
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="dept-select"
-              style={{ width: "100%", marginBottom: 12, padding: 8 }}
-            >
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d.charAt(0).toUpperCase() + d.slice(1)}
-                </option>
-              ))}
-            </select>
-            <label><strong>Passkey:</strong></label>
-            <input
-              type="password"
-              value={passkey}
-              onChange={(e) => setPasskey(e.target.value)}
-              placeholder="Enter department passkey"
-              required
-              style={{ width: "100%", marginBottom: 12, padding: 8 }}
-            />
-            {authError && (
-              <div style={{ color: "#c0392b", background: "#fdeaea", padding: "8px 12px", borderRadius: 6, marginBottom: 12 }}>
-                {authError}
-              </div>
-            )}
-            <button type="submit" className="btn approve" style={{ width: "100%" }}>
-              Unlock Portal
-            </button>
-          </form>
-        </div>
-      ) : (
-      <>
-
-      {/* Department selector (locked to authenticated dept) */}
-      <div className="section-card">
-        <div className="control-row">
-          <label><strong>Department:</strong> {deptLabel}</label>
-          <button onClick={handleLogout} className="btn reject" style={{ marginLeft: "auto" }}>
-            🔒 Logout
-          </button>
-        </div>
       </div>
 
       {actionMsg && (
@@ -281,6 +206,8 @@ function DepartmentPortal() {
                   >
                     {doc.currentStatus === "pending_department"
                       ? "Pending Review"
+                      : doc.currentStatus === "pending_admin"
+                      ? "Pending Admin Review"
                       : doc.finalStatus === "approved"
                       ? "Approved"
                       : "Rejected"}
@@ -292,8 +219,6 @@ function DepartmentPortal() {
           </tbody>
         </table>
       </div>
-      </>
-      )}
     </div>
   );
 }

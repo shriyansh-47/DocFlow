@@ -4,19 +4,21 @@ import UploadForm from "../components/UploadForm";
 
 const API = "http://localhost:5000/api";
 
-function StudentPortal() {
+function StudentPortal({ token }) {
   const [uploadMsg, setUploadMsg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState([]);
 
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+
   const fetchDocs = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/documents`);
+      const res = await axios.get(`${API}/documents`, authHeaders);
       setDocuments(res.data);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     fetchDocs();
@@ -32,7 +34,7 @@ function StudentPortal() {
 
     try {
       const res = await axios.post(`${API}/upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` },
         validateStatus: () => true,
       });
       if (res.data.status === "rejected") {
@@ -48,6 +50,35 @@ function StudentPortal() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const hasFinalized = documents.some(
+    (d) => d.finalStatus === "approved" || d.finalStatus === "rejected"
+  );
+
+  const clearHistory = async () => {
+    try {
+      const res = await axios.delete(`${API}/documents/clear`, authHeaders);
+      setUploadMsg({ status: "success", message: res.data.message });
+      fetchDocs();
+    } catch (err) {
+      setUploadMsg({
+        status: "error",
+        message: err.response?.data?.message || err.message,
+      });
+    }
+  };
+
+  const clearSingle = async (docId) => {
+    try {
+      await axios.delete(`${API}/documents/${docId}`, authHeaders);
+      fetchDocs();
+    } catch (err) {
+      setUploadMsg({
+        status: "error",
+        message: err.response?.data?.message || err.message,
+      });
     }
   };
 
@@ -84,7 +115,18 @@ function StudentPortal() {
 
       {documents.length > 0 && (
         <div className="section-card">
-          <h3>My Documents</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>My Documents</h3>
+            {hasFinalized && (
+              <button
+                className="btn btn-clear"
+                onClick={clearHistory}
+                title="Clear all finalized documents from history"
+              >
+                Clear Completed History
+              </button>
+            )}
+          </div>
           <table className="history-table">
             <thead>
               <tr>
@@ -93,6 +135,7 @@ function StudentPortal() {
                 <th>Status</th>
                 <th>Department</th>
                 <th>Uploaded</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +152,17 @@ function StudentPortal() {
                     {doc.department || "—"}
                   </td>
                   <td>{new Date(doc.uploadedAt).toLocaleString()}</td>
+                  <td>
+                    {(doc.finalStatus === "approved" || doc.finalStatus === "rejected") && (
+                      <button
+                        className="btn btn-clear-small"
+                        onClick={() => clearSingle(doc.id)}
+                        title="Remove from history"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
