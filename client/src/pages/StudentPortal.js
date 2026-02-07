@@ -35,7 +35,11 @@ function StudentPortal() {
         headers: { "Content-Type": "multipart/form-data" },
         validateStatus: () => true,
       });
-      setUploadMsg(res.data);
+      if (res.data.status === "rejected") {
+        setUploadMsg({ status: "error", message: "Please upload Valid Document !!" });
+      } else {
+        setUploadMsg(res.data);
+      }
       fetchDocs();
     } catch (err) {
       setUploadMsg({

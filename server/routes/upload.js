@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const { MAX_FILE_SIZE, ALLOWED_EXTENSIONS } = require("../config");
 const { extractText } = require("../utils/extractText");
-const { detectDepartment } = require("../validators/departmentValidator");
+const { classifyDocument } = require("../validators/documentValidator");
 const store = require("../store");
 
 const router = express.Router();
@@ -66,11 +66,11 @@ router.post("/", (req, res) => {
     try {
       const textContent = await extractText(filePath);
 
-      // Auto-detect department from document keywords
-      const department = detectDepartment(textContent);
+      // ── CLASSIFY the document into admissions / internship / scholarship / none ──
+      const classification = classifyDocument(textContent);
 
-      if (!department) {
-        // Could not determine department — reject with guidance
+      if (!classification.isValid || classification.category === "none") {
+        // Classification failed — cannot determine document type
         const doc = store.addDocument({
           id: docId,
           originalName: req.file.originalname,
@@ -82,15 +82,20 @@ router.post("/", (req, res) => {
           stages: [
             {
               stage: "upload",
+              status: "submitted",
+              timestamp: new Date().toISOString(),
+              remarks: "File uploaded successfully.",
+            },
+            {
+              stage: "classification",
               status: "rejected",
               timestamp: new Date().toISOString(),
-              remarks:
-                "Could not determine department. Document must contain keywords related to admissions, scholarship, or internship.",
+              remarks: classification.failReason || "Document could not be classified into any category.",
+              scores: classification.scores,
             },
           ],
           finalStatus: "rejected",
-          finalMessage:
-            "Auto-routing failed: no department keywords found. Please include relevant details (e.g. qualification/marks for admissions, income/financial for scholarship, skills/experience for internship).",
+          finalMessage: classification.failReason || "Document could not be classified. Please upload a document related to admissions, scholarship, or internship.",
           extracted: null,
           adminRemarks: null,
           departmentRemarks: null,
@@ -100,10 +105,13 @@ router.post("/", (req, res) => {
           id: docId,
           status: "rejected",
           message: doc.finalMessage,
+          classification,
           stages: doc.stages,
         });
       }
 
+      // ── Classification succeeded → route to the classified department ──
+      const department = classification.category;
       const deptLabel = department.charAt(0).toUpperCase() + department.slice(1);
 
       const doc = store.addDocument({
@@ -119,7 +127,15 @@ router.post("/", (req, res) => {
             stage: "upload",
             status: "submitted",
             timestamp: new Date().toISOString(),
-            remarks: `File uploaded. Auto-routed to ${deptLabel} Department for review.`,
+            remarks: "File uploaded successfully.",
+          },
+          {
+            stage: "classification",
+            status: "passed",
+            timestamp: new Date().toISOString(),
+            remarks: `Classified as "${deptLabel}" (score: ${classification.bestScore}). Routed to ${deptLabel} Department.`,
+            scores: classification.scores,
+            detected: classification.detected,
           },
         ],
         finalStatus: null,
@@ -132,8 +148,9 @@ router.post("/", (req, res) => {
       return res.status(200).json({
         id: docId,
         status: "pending_department",
-        message: `Document uploaded and auto-routed to ${deptLabel} Department for review.`,
+        message: `Document classified as "${deptLabel}" and routed to ${deptLabel} Department for review.`,
         department,
+        classification,
         stages: doc.stages,
       });
     } catch (error) {

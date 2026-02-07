@@ -30,7 +30,7 @@ function UploadForm({ onUpload, loading }) {
         Accepted formats: <strong>.txt</strong>, <strong>.pdf</strong> &nbsp;|&nbsp;
         Max size: <strong>2 MB</strong>
         <br />
-        The document must include: <em>Name, Address, DOB, Phone Number, Field/Purpose</em>
+        <strong>Note :- Document should be valid !!</strong>
       </p>
     </div>
   );
