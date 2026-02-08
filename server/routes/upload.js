@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const { MAX_FILE_SIZE, ALLOWED_EXTENSIONS } = require("../config");
 const { extractText } = require("../utils/extractText");
-const { classifyDocument } = require("../validators/documentValidator");
+const { classifyDocument, validateMandatoryFields } = require("../validators/documentValidator");
 const { authMiddleware, requireRole } = require("../middleware/authMiddleware");
 const store = require("../store");
 
@@ -108,6 +108,58 @@ router.post("/", authMiddleware, requireRole("student"), (req, res) => {
           status: "rejected",
           message: doc.finalMessage,
           classification,
+          stages: doc.stages,
+        });
+      }
+
+      // ── Mandatory field validation ──
+      const fieldCheck = validateMandatoryFields(textContent);
+      if (!fieldCheck.valid) {
+        const missingList = fieldCheck.missing.join(", ");
+        const doc = store.addDocument({
+          id: docId,
+          userId: req.user.id,
+          originalName: req.file.originalname,
+          filePath,
+          uploadedAt: new Date().toISOString(),
+          textContent,
+          currentStatus: "rejected",
+          department: null,
+          stages: [
+            {
+              stage: "upload",
+              status: "submitted",
+              timestamp: new Date().toISOString(),
+              remarks: "File uploaded successfully.",
+            },
+            {
+              stage: "classification",
+              status: "passed",
+              timestamp: new Date().toISOString(),
+              remarks: `Classified as "${classification.category}" (score: ${classification.bestScore}).`,
+              scores: classification.scores,
+              detected: classification.detected,
+            },
+            {
+              stage: "field-validation",
+              status: "rejected",
+              timestamp: new Date().toISOString(),
+              remarks: `Missing mandatory fields: ${missingList}.`,
+            },
+          ],
+          finalStatus: "rejected",
+          finalMessage: `Document is missing required fields: ${missingList}. Please include all mandatory information and re-upload.`,
+          extracted: null,
+          adminRemarks: null,
+          departmentRemarks: null,
+        });
+
+        return res.status(422).json({
+          id: docId,
+          status: "rejected",
+          message: doc.finalMessage,
+          classification,
+          missingFields: fieldCheck.missing,
           stages: doc.stages,
         });
       }

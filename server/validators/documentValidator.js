@@ -119,3 +119,89 @@ async function classifyDocument(rawText) {
 }
 
 module.exports = { classifyDocument };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Mandatory Field Validator
+//
+// Checks that the uploaded document contains required fields:
+//   - Name of the applicant
+//   - Date
+//   - Subject line
+//   - Roll number / Student ID
+//   - Contact info (email or phone)
+//
+// Uses regex pattern matching on the raw text.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MANDATORY_FIELDS = [
+  {
+    name: "Name",
+    patterns: [
+      /\bname\s*[:\-–—]\s*\S+/i,
+      /\b(?:i\s*,?\s+|my\s+name\s+is\s+|undersigned\s*,?\s*)\S+/i,
+      /\b(?:mr|mrs|ms|miss|dr|prof)\.?\s+[A-Z][a-z]+/i,
+      /\bapplicant\s*[:\-–—]\s*\S+/i,
+      /\bstudent\s+name\s*[:\-–—]\s*\S+/i,
+      /\bfull\s+name\s*[:\-–—]\s*\S+/i,
+    ],
+  },
+  {
+    name: "Date",
+    patterns: [
+      /\bdate\s*[:\-–—]\s*\S+/i,
+      /\b\d{1,2}[\/.\\-]\d{1,2}[\/.\\-]\d{2,4}\b/,
+      /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*\d{2,4}\b/i,
+      /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}\s*,?\s*\d{2,4}\b/i,
+      /\bdated?\s*[:\-–—]?\s*\d/i,
+    ],
+  },
+  {
+    name: "Subject",
+    patterns: [
+      /\bsubject\s*[:\-–—]\s*\S+/i,
+      /\bsub\s*[:\-–—]\s*\S+/i,
+      /\bre\s*[:\-–—]\s*\S+/i,
+      /\bregarding\s*[:\-–—]\s*\S+/i,
+      /\btopic\s*[:\-–—]\s*\S+/i,
+    ],
+  },
+  {
+    name: "Roll Number / Student ID",
+    patterns: [
+      /\b(?:roll|reg|registration|student)\s*(?:no|number|id|#)\s*[:\-–—]?\s*\S+/i,
+      /\b(?:id|enrollment)\s*(?:no|number|#)\s*[:\-–—]?\s*\S+/i,
+      /\b[A-Z]{2,5}[\-\/]?\d{2,4}[\-\/]?\d{2,6}\b/,
+      /\broll\s*[:\-–—]\s*\S+/i,
+    ],
+  },
+  {
+    name: "Contact Info (Email or Phone)",
+    patterns: [
+      /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/,
+      /\b(?:phone|mobile|contact|tel|cell)\s*(?:no|number|#)?\s*[:\-–—]?\s*[\d\s\-+()]{7,}/i,
+      /\b(?:\+?\d{1,3}[\s\-]?)?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}\b/,
+      /\b\d{10,12}\b/,
+    ],
+  },
+];
+
+/**
+ * Check the document text for mandatory fields.
+ * Returns { valid: true } or { valid: false, missing: [...fieldNames] }
+ */
+function validateMandatoryFields(rawText) {
+  const missing = [];
+
+  for (const field of MANDATORY_FIELDS) {
+    const found = field.patterns.some((pattern) => pattern.test(rawText));
+    if (!found) {
+      missing.push(field.name);
+    }
+  }
+
+  return missing.length === 0
+    ? { valid: true, missing: [] }
+    : { valid: false, missing };
+}
+
+module.exports = { classifyDocument, validateMandatoryFields };
